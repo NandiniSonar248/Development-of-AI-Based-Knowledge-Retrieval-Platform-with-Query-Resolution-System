@@ -7,9 +7,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
+from dotenv import load_dotenv
+
 from app.rag.exceptions import InvalidVectorStoreConfigError
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+# RAGConfig reads os.environ directly (not pydantic Settings). Load the project
+# .env once so CHROMA_MODE / host / port in .env are actually applied.
+load_dotenv(PROJECT_ROOT / ".env", override=False)
 
 ChromaMode = Literal["embedded", "http"]
 

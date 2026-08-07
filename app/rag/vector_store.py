@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 import chromadb
 from chromadb.api.client import ClientAPI
 from chromadb.api.models.Collection import Collection
+from chromadb.errors import NotFoundError
 
 from app.rag.config import HTTP_MODE, RAGConfig
 from app.rag.exceptions import VectorStoreConnectionError
+
+T = TypeVar("T")
 
 
 class VectorStore(ABC):
@@ -64,11 +68,13 @@ class ChromaVectorStore(VectorStore):
         documents: list[str],
         metadatas: list[dict[str, str]],
     ) -> None:
-        self._collection.upsert(
-            ids=ids,
-            embeddings=embeddings,
-            documents=documents,
-            metadatas=metadatas,
+        self._with_collection(
+            lambda collection: collection.upsert(
+                ids=ids,
+                embeddings=embeddings,
+                documents=documents,
+                metadatas=metadatas,
+            )
         )
 
     def similarity_search(
@@ -84,14 +90,30 @@ class ChromaVectorStore(VectorStore):
         }
         if where:
             kwargs["where"] = where
-        return self._collection.query(**kwargs)
+        return self._with_collection(lambda collection: collection.query(**kwargs))
 
     def count(self) -> int:
-        return self._collection.count()
+        return self._with_collection(lambda collection: collection.count())
 
     def reset(self) -> None:
-        self._client.delete_collection(self._collection_name)
+        try:
+            self._client.delete_collection(self._collection_name)
+        except NotFoundError:
+            pass
         self._collection = self._create_collection()
+
+    def _with_collection(self, operation: Callable[[Collection], T]) -> T:
+        """Run an operation, refreshing the cached handle if it went stale.
+
+        The cached ``Collection`` holds a UUID that is invalidated whenever the
+        collection is dropped and recreated — by ``reset()`` here or by another
+        process sharing the same store.
+        """
+        try:
+            return operation(self._collection)
+        except NotFoundError:
+            self._collection = self._create_collection()
+            return operation(self._collection)
 
     def _create_collection(self) -> Collection:
         return self._client.get_or_create_collection(

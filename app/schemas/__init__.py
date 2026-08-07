@@ -7,6 +7,7 @@ from app.schemas.auth import (
     SignupRequest,
     UserPublic,
 )
+from app.schemas.query import QueryRequest, QueryResponse, SourceChunkPublic, UploadResponse
 from app.schemas.rag import DocumentChunk, SearchResult
 
 __all__ = [
@@ -14,7 +15,11 @@ __all__ = [
     "DocumentChunk",
     "LoginRequest",
     "MessageResponse",
+    "QueryRequest",
+    "QueryResponse",
     "SearchResult",
     "SignupRequest",
+    "SourceChunkPublic",
+    "UploadResponse",
     "UserPublic",
 ]

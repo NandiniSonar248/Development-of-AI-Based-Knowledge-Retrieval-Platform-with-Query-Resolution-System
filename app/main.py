@@ -5,15 +5,22 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth_router
+from app.api import auth_router, query_router, upload_router
 from app.core.config import get_settings
 from app.database.connection import init_db
+from app.services.query_service import get_query_service
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """Create DB tables on startup."""
+    """Create DB tables and warm the query agent on startup."""
     await init_db()
+    settings = get_settings()
+    try:
+        get_query_service()
+    except Exception as exc:
+        if settings.debug:
+            print(f"Warning: QueryService failed to initialize: {exc}")
     yield
 
 
@@ -31,6 +38,8 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(auth_router)
+    app.include_router(upload_router)
+    app.include_router(query_router)
 
     @app.get("/health")
     async def health() -> dict[str, str]:
