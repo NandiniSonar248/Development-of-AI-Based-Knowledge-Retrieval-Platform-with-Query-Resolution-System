@@ -27,6 +27,7 @@ dependencies = [
     "python-docx>=1.2.0",
     "python-multipart>=0.0.20",
     "sqlalchemy>=2.0.51",
+    "streamlit>=1.49.0",
     "tiktoken>=0.13.0",
     "uvicorn[standard]>=0.51.0",
 ]

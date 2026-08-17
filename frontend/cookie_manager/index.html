@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://static.streamlit.io/static/v1.0/streamlitComponentLibraries.js"></script>
+</head>
+<body>
+    <script>
+        function setCookie(name, value, maxAge) {
+            document.cookie = name + "=" + encodeURIComponent(value) +
+                "; path=/; max-age=" + maxAge + "; samesite=lax";
+        }
+        function deleteCookie(name) {
+            document.cookie = name + "=; path=/; max-age=0";
+        }
+        function readTokens() {
+            var out = {};
+            document.cookie.split(";").forEach(function (pair) {
+                var i = pair.indexOf("=");
+                if (i > -1) {
+                    var key = pair.slice(0, i).trim();
+                    if (key === "access_token" || key === "refresh_token") {
+                        out[key] = decodeURIComponent(pair.slice(i + 1));
+                    }
+                }
+            });
+            return out;
+        }
+        function onRender(event) {
+            var args = event.detail.args || {};
+            try {
+                if (args.clear) {
+                    deleteCookie("access_token");
+                    deleteCookie("refresh_token");
+                } else if (args.set_tokens) {
+                    if (args.set_tokens.access_token) {
+                        setCookie("access_token", args.set_tokens.access_token, 1800);
+                    }
+                    if (args.set_tokens.refresh_token) {
+                        setCookie("refresh_token", args.set_tokens.refresh_token, 604800);
+                    }
+                }
+                var tokens = readTokens();
+                Streamlit.setComponentValue(Object.keys(tokens).length ? tokens : null);
+            } catch (err) {
+                Streamlit.setComponentValue(null);
+            }
+        }
+        Streamlit.events.addEventListener(Streamlit.RENDER_EVENT, onRender);
+        Streamlit.setComponentReady();
+        Streamlit.setFrameHeight(0);
+    </script>
+</body>
+</html>

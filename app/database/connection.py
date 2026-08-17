@@ -30,7 +30,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db() -> None:
     """Create tables if they do not exist."""
-    from app.models import user  # noqa: F401
+    from app.models import query, user  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

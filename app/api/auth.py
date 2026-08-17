@@ -87,6 +87,7 @@ async def refresh(
 async def logout(
     response: Response,
     cookies: CookieManager = Depends(get_cookie_manager),
+    current_user: UserPublic = Depends(get_current_user),
 ) -> MessageResponse:
     """Clear auth cookies."""
     cookies.clear_auth_cookies(response)
