@@ -6,7 +6,7 @@ import api_client
 from api_client import FrontendAPIError
 from cookie_manager import clear_tokens, get_tokens, set_tokens
 from state import ensure_session_state
-from ui import apply_theme, render_about_header, render_sidebar
+from ui import apply_theme, render_about_header, render_auth_form_header, render_auth_hero, render_sidebar
 
 st.set_page_config(
     page_title="AI Query Resolution",
@@ -33,73 +33,74 @@ def _restore_browser_session() -> None:
         st.rerun()
 
 
+def _render_auth_flow() -> None:
+    render_auth_hero()
+
+    _, form_col, _ = st.columns([0.2, 1.6, 0.2])
+    with form_col:
+        mode = st.session_state.auth_view
+        render_auth_form_header(signup=mode == "signup")
+
+        if mode == "signup":
+            with st.form("signup_form", clear_on_submit=False):
+                signup_name = st.text_input("Full name", placeholder="Your name")
+                signup_email = st.text_input("Email", placeholder="you@company.com")
+                signup_password = st.text_input("Password", type="password", placeholder="Create a password")
+                signup_submitted = st.form_submit_button("Create account", use_container_width=True)
+
+            if signup_submitted:
+                try:
+                    payload, tokens = api_client.signup(signup_name, signup_email, signup_password)
+                    st.session_state.current_user = payload["user"]
+                    st.session_state["_pending_set"] = tokens
+                    st.success(payload["message"])
+                    st.rerun()
+                except FrontendAPIError as exc:
+                    st.error(str(exc))
+
+            st.markdown('<div class="auth-toggle">Already have an account?</div>', unsafe_allow_html=True)
+            if st.button("Sign in instead", use_container_width=True):
+                st.session_state.auth_view = "login"
+                st.rerun()
+        else:
+            with st.form("login_form", clear_on_submit=False):
+                login_email = st.text_input("Email", placeholder="you@company.com")
+                login_password = st.text_input("Password", type="password", placeholder="Enter your password")
+                login_submitted = st.form_submit_button("Sign in", use_container_width=True)
+
+            if login_submitted:
+                try:
+                    payload, tokens = api_client.login(login_email, login_password)
+                    st.session_state.current_user = payload["user"]
+                    st.session_state["_pending_set"] = tokens
+                    st.success(payload["message"])
+                    st.rerun()
+                except FrontendAPIError as exc:
+                    st.error(str(exc))
+
+            st.markdown('<div class="auth-toggle">Need a new account?</div>', unsafe_allow_html=True)
+            if st.button("Create an account", use_container_width=True):
+                st.session_state.auth_view = "signup"
+                st.rerun()
+
+
 def home_page() -> None:
     ensure_session_state()
-    apply_theme()
-    render_sidebar()
 
     if not st.session_state.current_user:
+        apply_theme(auth_page=True)
+        render_sidebar()
         _restore_browser_session()
-        st.markdown(
-            '<div class="hero-title" style="text-align:center;">Development of AI-Based Knowledge Retrieval Platform with Query Resolution System</div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
+        _render_auth_flow()
+        return
 
-        auth_col = st.columns([1, 1, 1])[1]
-        with auth_col:
-            mode = st.session_state.auth_view
-            title = "Create your account" if mode == "signup" else "Welcome back"
-            st.subheader(title)
+    apply_theme()
+    render_sidebar()
+    render_about_header()
+    st.markdown("")
+    intro_col, actions_col = st.columns([1.25, 0.75], gap="large")
 
-            if mode == "signup":
-                with st.form("signup_form", clear_on_submit=False):
-                    signup_name = st.text_input("Full name")
-                    signup_email = st.text_input("Email")
-                    signup_password = st.text_input("Password", type="password")
-                    signup_submitted = st.form_submit_button("Sign up", use_container_width=True)
-
-                if signup_submitted:
-                    try:
-                        payload, tokens = api_client.signup(signup_name, signup_email, signup_password)
-                        st.session_state.current_user = payload["user"]
-                        st.session_state["_pending_set"] = tokens
-                        st.success(payload["message"])
-                        st.rerun()
-                    except FrontendAPIError as exc:
-                        st.error(str(exc))
-
-                st.markdown('<div class="auth-toggle">Already an existing user?</div>', unsafe_allow_html=True)
-                if st.button("Go to login", use_container_width=True):
-                    st.session_state.auth_view = "login"
-                    st.rerun()
-            else:
-                with st.form("login_form", clear_on_submit=False):
-                    login_email = st.text_input("Email")
-                    login_password = st.text_input("Password", type="password")
-                    login_submitted = st.form_submit_button("Login", use_container_width=True)
-
-                if login_submitted:
-                    try:
-                        payload, tokens = api_client.login(login_email, login_password)
-                        st.session_state.current_user = payload["user"]
-                        st.session_state["_pending_set"] = tokens
-                        st.success(payload["message"])
-                        st.rerun()
-                    except FrontendAPIError as exc:
-                        st.error(str(exc))
-
-                st.markdown('<div class="auth-toggle">Need a new account?</div>', unsafe_allow_html=True)
-                if st.button("Go to signup", use_container_width=True):
-                    st.session_state.auth_view = "signup"
-                    st.rerun()
-
-    else:
-        render_about_header()
-        st.markdown("")
-        intro_col, actions_col = st.columns([1.25, 0.75], gap="large")
-
-        with intro_col:
+    with intro_col:
             st.markdown(
                 """
                 <div class="glass-card" style="margin-bottom:1.1rem;">
@@ -215,7 +216,7 @@ def home_page() -> None:
                 unsafe_allow_html=True,
             )
 
-        with actions_col:
+    with actions_col:
             st.markdown(
                 """
                 <div class="glass-card">
@@ -264,22 +265,22 @@ def home_page() -> None:
 
 
 pages = [
-    st.Page(home_page, title="🏠 Home", icon=":material/home:", url_path="home", default=True),
+    st.Page(home_page, title="Home", icon=":material/home:", url_path="home", default=True),
     st.Page(
         "pages/2_Upload_Documents.py",
-        title="📚 Knowledge Base",
+        title="Knowledge Base",
         icon=":material/library_books:",
         url_path="knowledge-base",
     ),
     st.Page(
         "pages/3_Chat_With_Agent.py",
-        title="💬 Knowledge Assistant",
+        title="Knowledge Assistant",
         icon=":material/forum:",
         url_path="knowledge-assistant",
     ),
     st.Page(
         "pages/4_Query_Analytics.py",
-        title="📊 Query Analytics",
+        title="Query Analytics",
         icon=":material/analytics:",
         url_path="query-analytics",
     ),

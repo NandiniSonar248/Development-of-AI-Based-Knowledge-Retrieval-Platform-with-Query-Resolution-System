@@ -11,7 +11,7 @@ if str(ROOT) not in sys.path:
 
 from app.services.query_service import get_query_service
 from state import ensure_session_state
-from ui import apply_theme, render_response_details, render_sidebar, require_auth
+from ui import apply_theme, render_page_header, render_response_details, render_sidebar, require_auth
 
 import api_client
 
@@ -27,7 +27,10 @@ apply_theme()
 render_sidebar()
 require_auth()
 
-st.title("💬 Knowledge Assistant")
+render_page_header(
+    "Knowledge Assistant",
+    "Ask questions about your uploaded documents and get grounded answers with citations and confidence scores.",
+)
 
 service = get_query_service()
 

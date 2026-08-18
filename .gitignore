@@ -13,3 +13,5 @@ build/
 .cursor/
 .cursor/*
 .cursor
+
+AGENTS.md

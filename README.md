@@ -21,9 +21,20 @@ AI Powred Intelligent Query Resolution System/
 │   ├── services/
 │   ├── schemas/
 │   ├── ui/
-│   │   └── gradio_app.py          # temporary Gradio UI (replace with React later)
+│   │   └── gradio_app.py          # legacy Gradio UI (superseded by frontend/)
 │   ├── dependencies.py
 │   └── main.py
+├── frontend/                      # Module 8 — Streamlit UI (primary)
+│   ├── app.py                     # entry point (auth + navigation)
+│   ├── api_client.py              # httpx wrapper for FastAPI
+│   ├── config.py                  # API base URL + timeouts
+│   ├── ui.py                      # theme, sidebar, transparency widgets
+│   ├── state.py                   # session state + HTTP client
+│   ├── cookie_manager/            # browser cookie bridge for JWT tokens
+│   └── pages/
+│       ├── 2_Upload_Documents.py
+│       ├── 3_Chat_With_Agent.py
+│       └── 4_Query_Analytics.py
 ├── tests/
 │   ├── agent/
 │   ├── rag/
@@ -92,7 +103,7 @@ orchestrator  →  search_documents tool  →  DocumentRetriever  →  ChromaDB
 
 ```mermaid
 flowchart TD
-    U["👤 User asks a question<br/>(Gradio chat or POST /query)"] --> M
+    U["👤 User asks a question<br/>(Streamlit UI or POST /query)"] --> M
 
     subgraph MAIN["MAIN GRAPH — conversation understanding"]
         direction TB
@@ -233,14 +244,14 @@ orchestrator → answer
 
 The agent never opens Chroma itself. The tool is a thin wrapper over your existing Module 1 RAG code.
 
-```text
-┌─────────────────┐     ┌──────────────────────┐     ┌────────────────────┐     ┌─────────────────────────┐
-│  orchestrator   │────►│  search_documents     │────►│  DocumentRetriever │────►│  ChromaVectorStore      │
-│  (LLM decides   │     │  (app/agents/tools)   │     │  (app/rag)          │     │  http  = Docker server  │
-│   query + limit)│     │                      │     │  embed query with   │     │  embedded = chromadb/   │
-└─────────────────┘     │  filters by score     │     │  mxbai-embed-large  │     │  folder on disk         │
-                        │  threshold            │     └────────────────────┘     └─────────────────────────┘
-                        └──────────────────────┘
+```mermaid
+flowchart LR
+    O["orchestrator<br/>LLM decides query + limit"]
+    T["search_documents<br/>app/agents/tools<br/>filters by score threshold"]
+    R["DocumentRetriever<br/>app/rag<br/>embed with mxbai-embed-large"]
+    C["ChromaVectorStore<br/>app/rag<br/>http → Docker · embedded → chromadb/"]
+
+    O --> T --> R --> C
 ```
 
 | Layer | File | Job |
@@ -264,7 +275,7 @@ app/transparency/
   └── confidence.py  → retrieval confidence score
        │
        ▼
-QueryResponse / Gradio chat message
+QueryResponse / Streamlit chat message
 ```
 
 ### How each agent / node is used
@@ -340,26 +351,103 @@ OPENAI_MODEL=gpt-4o-mini
 # OPENAI_BASE_URL=https://api.openai.com/v1
 ```
 
-Restart the API / Gradio after changing provider (settings are cached at startup).
+Restart the API / frontend after changing provider (settings are cached at startup).
 
-## Run the API
+## Quick start (full stack)
+
+Run these in order. The Streamlit frontend talks to the FastAPI backend over HTTP; both must be up for auth, upload, chat, and analytics.
+
+### 1. Prerequisites
+
+| Service | Purpose | Notes |
+| --- | --- | --- |
+| **PostgreSQL** | Users, query history, analytics | Must match `DATABASE_URL` in `.env` |
+| **Ollama** | Embeddings + chat LLM | Pull `mxbai-embed-large` and your chat model (e.g. `granite4.1:8b`) |
+| **ChromaDB** | Vector store | `embedded` mode (default in `.env.example`) needs no Docker; use `docker compose up -d` for `http` mode |
 
 ```powershell
+copy .env.example .env
 uv sync
-uv run python -m uvicorn app.main:app --reload
+ollama pull mxbai-embed-large
+ollama pull granite4.1:8b
 ```
 
-- Auth: `/auth/*`
-- Upload: `POST /upload` (JWT cookie)
-- Query: `POST /query` (JWT cookie)
+Ensure PostgreSQL is running and the database in `DATABASE_URL` exists before starting the API.
 
-## Temporary Gradio UI
+### 2. Start the API and frontend
+
+From repo root, use two terminals:
+
+```powershell
+# Terminal 1 — API (http://localhost:8000, health at GET /health)
+uv run python -m uvicorn app.main:app --reload
+
+# Terminal 2 — Frontend (http://localhost:8501)
+uv run streamlit run frontend/app.py
+```
+
+| Route group | Endpoints |
+| --- | --- |
+| Auth | `/auth/signup`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/me` |
+| Upload | `POST /upload`, `GET /upload/documents`, `DELETE /upload` (JWT cookie) |
+| Query | `POST /query`, `POST /query/reset` (JWT cookie) |
+| Analytics | `GET /analytics/summary`, `GET /analytics/recent`, `POST /analytics/records` |
+
+**Streamlit pages**
+
+1. **Home** — sign up or log in (JWT tokens stored in HTTP-only cookies via a small browser component).
+2. **Knowledge Base** — upload PDF/DOCX files to the backend ingestion API.
+3. **Knowledge Assistant** — multi-turn chat with the agent graph; shows citations, source chunks, and confidence.
+4. **Query Analytics** — personal query history, confidence trends, and knowledge-gap detection.
+
+The frontend calls the API server-side with `httpx` (see `frontend/api_client.py`). Default backend URL is `http://localhost:8000`; change it in `frontend/config.py` (`DEFAULT_API_BASE_URL`) if your API runs elsewhere.
+
+### Optional: ingest documents without the UI
+
+Drop PDF or Word files in `uploads/`, then:
+
+```powershell
+uv run python -m app.rag.ingestion
+```
+
+## Streamlit frontend (Module 8)
+
+The primary UI lives in `frontend/` — a multi-page Streamlit app that wraps the existing REST API.
+
+```text
+frontend/
+├── app.py              # login/signup home + st.navigation sidebar
+├── api_client.py       # signup, login, upload, query, analytics
+├── config.py           # DEFAULT_API_BASE_URL, REQUEST_TIMEOUT_SECONDS
+├── ui.py               # glass theme, transparency expanders, auth guards
+├── state.py            # httpx client + thread/chat session state
+├── cookie_manager/     # persists access/refresh tokens in the browser
+└── pages/
+    ├── 2_Upload_Documents.py
+    ├── 3_Chat_With_Agent.py    # streams agent graph via QueryService
+    └── 4_Query_Analytics.py
+```
+
+Run commands are in **Quick start → 2. Start the API and frontend** above.
+
+**Configure**
+
+| Setting | File | Default |
+| --- | --- | --- |
+| API base URL | `frontend/config.py` | `http://localhost:8000` |
+| Request timeout | `frontend/config.py` | `60` seconds |
+
+Restart Streamlit after editing `config.py`. Backend settings (LLM, Chroma, JWT) still come from `.env` — restart the API when those change.
+
+## Legacy Gradio UI
+
+An older two-tab Gradio interface remains under `app/ui/gradio_app.py` for quick smoke tests. The Streamlit frontend above is the supported UI.
 
 ```powershell
 uv run python -m app.ui.gradio_app
 ```
 
-Opens at `http://localhost:7860` — Documents tab + Chat tab. Replace with React (Module 8) later.
+Opens at `http://localhost:7860`.
 
 ## Run the tests
 

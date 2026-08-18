@@ -5,15 +5,17 @@ import streamlit as st
 import api_client
 from api_client import FrontendAPIError
 from state import ensure_session_state
-from ui import apply_theme, render_sidebar, require_auth
+from ui import apply_theme, render_page_header, render_sidebar, require_auth
 
 ensure_session_state()
 apply_theme()
 render_sidebar()
 require_auth()
 
-st.title("📚 Knowledge Base")
-st.caption("Upload PDF or DOCX files to the existing backend ingestion API.")
+render_page_header(
+    "Knowledge Base",
+    "Upload PDF or DOCX files, index them for retrieval, and manage your organization's document library.",
+)
 
 st.markdown(
     """
