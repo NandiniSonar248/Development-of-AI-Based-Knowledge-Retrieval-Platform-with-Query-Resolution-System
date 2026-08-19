@@ -30,6 +30,7 @@ dependencies = [
     "streamlit>=1.49.0",
     "tiktoken>=0.13.0",
     "uvicorn[standard]>=0.51.0",
+    "websockets>=15.0.1",
 ]
 
 [tool.pytest.ini_options]

@@ -1,1 +1,1 @@
-"""AI-Powered Intelligent Query Resolution System."""
+"""Development of AI-Based Knowledge Retrieval Platform with Query Resolution System."""

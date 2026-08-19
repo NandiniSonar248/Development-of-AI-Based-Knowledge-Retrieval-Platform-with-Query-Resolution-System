@@ -13,6 +13,12 @@ _BIN_LABELS = {
     "low": "Low (0.30-0.49)",
     "very_low": "Very low (<0.30)",
 }
+_BIN_METRIC_LABELS = {
+    "high": "High",
+    "moderate": "Moderate",
+    "low": "Low",
+    "very_low": "Very Low",
+}
 _BIN_MIDPOINTS = {
     "high": 0.85,
     "moderate": 0.6,
@@ -181,7 +187,7 @@ def render_confidence_panel(dist: dict[str, int], total: int) -> None:
     for col, key in zip(cols, _BIN_ORDER):
         count = int(dist[key])
         pct = count / total * 100.0 if total else 0.0
-        col.metric(_BIN_LABELS[key].split(" ")[0], count, f"{pct:.0f}%")
+        col.metric(_BIN_METRIC_LABELS[key], count, f"{pct:.0f}%")
 
 
 

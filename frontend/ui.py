@@ -11,7 +11,7 @@ import streamlit as st
 import api_client
 from api_client import FrontendAPIError
 from cookie_manager import clear_tokens, set_tokens
-from state import ensure_session_state, reset_app_state
+from state import ensure_session_state, get_access_token, reset_app_state, store_auth_tokens
 
 ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 LOGIN_BANNER = ASSETS_DIR / "login_banner_bg.png"
@@ -576,7 +576,7 @@ def render_auth_hero() -> None:
             <div class="auth-hero-shade"></div>
             <div class="auth-hero-inner">
                 <div class="auth-kicker" style="color:rgba(255,255,255,0.82);">Knowledge platform</div>
-                <h1 class="auth-hero-title">AI-Powered Intelligent Query Resolution System</h1>
+                <h1 class="auth-hero-title">Development of AI-Based Knowledge Retrieval Platform with Query Resolution System</h1>
                 <p class="auth-hero-tagline">Ask. Understand. Resolve.</p>
                 <p class="auth-hero-desc">
                     Upload your documents, ask in natural language, and get accurate grounded answers
@@ -634,6 +634,7 @@ def render_sidebar() -> None:
     ensure_session_state()
     pending_set = st.session_state.pop("_pending_set", None)
     if pending_set:
+        store_auth_tokens(pending_set)
         set_tokens(
             str(pending_set.get("access_token", "")),
             str(pending_set.get("refresh_token", "")),
@@ -642,6 +643,7 @@ def render_sidebar() -> None:
         clear_tokens()
     if not st.session_state.current_user:
         return
+    get_access_token()
     with st.sidebar:
         name = st.session_state.current_user["name"]
         email = st.session_state.current_user["email"]
@@ -688,7 +690,7 @@ def render_about_header() -> None:
             <div class="page-hero-shade"></div>
             <div class="page-hero-content">
                 <div class="auth-kicker">Ask. Understand. Resolve.</div>
-                <div class="page-hero-title" style="font-size:2rem;">AI-Powered Intelligent Query Resolution System</div>
+                <div class="page-hero-title" style="font-size:2rem;">Development of AI-Based Knowledge Retrieval Platform with Query Resolution System</div>
                 <div class="page-hero-subtitle">
                     Upload organizational documents, ask natural-language questions, and review grounded
                     answers with citations, confidence, source chunks, and retrieval scores.

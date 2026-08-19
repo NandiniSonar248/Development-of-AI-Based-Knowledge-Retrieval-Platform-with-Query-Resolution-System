@@ -5,11 +5,11 @@ import streamlit as st
 import api_client
 from api_client import FrontendAPIError
 from cookie_manager import clear_tokens, get_tokens, set_tokens
-from state import ensure_session_state
+from state import ensure_session_state, store_auth_tokens
 from ui import apply_theme, render_about_header, render_auth_form_header, render_auth_hero, render_sidebar
 
 st.set_page_config(
-    page_title="AI Query Resolution",
+    page_title="Knowledge Query Platform",
     page_icon="AI",
     layout="wide",
     initial_sidebar_state="expanded" if st.session_state.get("current_user") else "collapsed",
@@ -27,6 +27,7 @@ def _restore_browser_session() -> None:
         st.session_state.current_user = user
         if new_tokens:
             st.session_state["_pending_set"] = new_tokens
+            store_auth_tokens(new_tokens)
         st.rerun()
     except FrontendAPIError:
         st.session_state["_pending_clear"] = True
@@ -53,6 +54,7 @@ def _render_auth_flow() -> None:
                     payload, tokens = api_client.signup(signup_name, signup_email, signup_password)
                     st.session_state.current_user = payload["user"]
                     st.session_state["_pending_set"] = tokens
+                    store_auth_tokens(tokens)
                     st.success(payload["message"])
                     st.rerun()
                 except FrontendAPIError as exc:
@@ -73,6 +75,7 @@ def _render_auth_flow() -> None:
                     payload, tokens = api_client.login(login_email, login_password)
                     st.session_state.current_user = payload["user"]
                     st.session_state["_pending_set"] = tokens
+                    store_auth_tokens(tokens)
                     st.success(payload["message"])
                     st.rerun()
                 except FrontendAPIError as exc:

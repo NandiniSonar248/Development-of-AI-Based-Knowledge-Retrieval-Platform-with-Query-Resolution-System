@@ -10,16 +10,26 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.services.query_service import get_query_service
-from state import ensure_session_state
+from chat_flow import process_user_prompt
+from state import ensure_session_state, get_access_token, sanitize_base_url
 from ui import apply_theme, render_page_header, render_response_details, render_sidebar, require_auth
-
-import api_client
+from voice_ui import (
+    listen_for_voice_transcript,
+    play_answer_audio,
+    render_mode_switch,
+    render_voice_controls,
+)
 
 GREETING = (
     "👋 Hello! I'm your Knowledge Assistant.\n\n"
     "Ask me anything about your uploaded documents, policies, manuals, or FAQs. "
     "I'll find the relevant information and provide a clear answer with sources and confidence.\n\n"
     "How can I help you today?"
+)
+
+VOICE_GREETING = (
+    "🎙️ **Voice Agent** — press **Start listening**, ask your question, then pause briefly. "
+    "While the answer plays you can keep listening or pause it and ask a follow-up anytime."
 )
 
 ensure_session_state()
@@ -33,90 +43,80 @@ render_page_header(
 )
 
 service = get_query_service()
+mode = render_mode_switch()
 
 if st.button("Reset chat"):
     st.session_state.thread_id = service.reset_thread()
     st.session_state.chat_messages = []
+    st.session_state.pop("last_voice_transcript_id", None)
+    st.session_state.pop("voice_partial", None)
+    st.session_state.voice_turn_token = 0
+    st.session_state.voice_active = False
     st.rerun()
 
-if not st.session_state.chat_messages:
-    with st.chat_message("assistant"):
-        st.markdown(GREETING)
+voice_token: str | None = None
+if mode == "Voice Agent":
+    voice_token = get_access_token()
+    if not voice_token:
+        st.warning("Sign in again from the home page to use voice mode.")
+    else:
+        render_voice_controls()
 
-for message in st.session_state.chat_messages:
+if not st.session_state.chat_messages:
+    greeting = VOICE_GREETING if mode == "Voice Agent" else GREETING
+    with st.chat_message("assistant"):
+        st.markdown(greeting)
+
+for index, message in enumerate(st.session_state.chat_messages):
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
         if message["role"] == "assistant" and "response" in message:
             render_response_details(message["response"])
+            audio_bytes = message.get("audio_bytes")
+            if mode == "Voice Agent" and audio_bytes:
+                is_latest_assistant = index == len(st.session_state.chat_messages) - 1
+                st.audio(
+                    audio_bytes,
+                    format="audio/mpeg",
+                    autoplay=is_latest_assistant,
+                )
+            elif mode == "Text Chat" and message.get("content"):
+                if st.button("Read aloud", key=f"read_aloud_{index}"):
+                    play_answer_audio(message["content"])
 
-prompt = st.chat_input("Ask a question about your documents")
+if mode == "Text Chat":
+    prompt = st.chat_input("Ask a question about your documents")
+    if prompt:
+        process_user_prompt(prompt, service, auto_read_aloud=False)
+else:
+    interim_box = st.empty()
+    partial = str(st.session_state.get("voice_partial", "") or "").strip()
+    if partial:
+        with interim_box.container():
+            with st.chat_message("user"):
+                st.markdown(partial)
 
-if prompt:
-    st.session_state.chat_messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    tid = st.session_state.thread_id or service.thread_id
-    with st.chat_message("assistant"):
-        status_box = st.empty()
-        answer_box = st.empty()
-        shown_tools: list[str] = []
-        collected_answer = ""
-        last_messages: list[dict] = []
-        had_error = False
-
-        try:
-            for message_list in service.stream_chat(prompt, tid):
-                last_messages = message_list
-
-                for msg in message_list:
-                    if "metadata" in msg:
-                        title = msg["metadata"].get("title")
-                        if title and title not in shown_tools:
-                            shown_tools.append(title)
-                            status_box.info(msg.get("content", f"Running `{title}`..."))
-
-                answer_text = ""
-                for msg in reversed(message_list):
-                    if msg.get("role") == "assistant" and "metadata" not in msg:
-                        answer_text = msg.get("content", "")
-                        break
-
-                if answer_text and answer_text != collected_answer:
-                    collected_answer = answer_text
-                    answer_box.markdown(collected_answer)
-
-            status_box.empty()
-
-            config = service.get_run_config(tid)
-            final_state = service.agent_graph.get_state(config)
-            values = getattr(final_state, "values", {}) or {}
-            response = service._build_response(
-                values, tid, pending_interrupt=bool(final_state.next)
+    result = listen_for_voice_transcript(
+        sanitize_base_url(st.session_state.api_base_url),
+        voice_token or "",
+    )
+    if result and result.partial:
+        st.session_state.voice_partial = result.partial
+        with interim_box.container():
+            with st.chat_message("user"):
+                st.markdown(result.partial)
+    if result and result.error:
+        st.error(result.error)
+        st.session_state.pop("voice_partial", None)
+        interim_box.empty()
+    elif result and result.transcript and result.transcript_id is not None:
+        if st.session_state.get("last_voice_transcript_id") != result.transcript_id:
+            st.session_state.last_voice_transcript_id = result.transcript_id
+            st.session_state.voice_active = False
+            st.session_state.pop("voice_partial", None)
+            interim_box.empty()
+            process_user_prompt(
+                result.transcript,
+                service,
+                auto_read_aloud=True,
             )
-            response_dict = response.model_dump()
-
-            if not collected_answer:
-                collected_answer = response.answer or ""
-                answer_box.markdown(collected_answer)
-
-            render_response_details(response_dict)
-        except Exception as exc:
-            had_error = True
-            status_box.empty()
-            st.error(f"Agent error: {exc}")
-
-        st.session_state.thread_id = tid
-        st.session_state.chat_messages.append(
-            {
-                "role": "assistant",
-                "content": collected_answer or ("(no answer)" if had_error else ""),
-                "response": response_dict if not had_error else {},
-            }
-        )
-
-        if not had_error and collected_answer:
-            try:
-                api_client.record_query(prompt, collected_answer, float(response_dict.get("confidence", 0.0)))
-            except Exception:
-                pass

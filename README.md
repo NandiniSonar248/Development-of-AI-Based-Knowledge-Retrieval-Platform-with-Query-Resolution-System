@@ -1,9 +1,9 @@
-# AI-Powered Intelligent Query Resolution System
+# Development of AI-Based Knowledge Retrieval Platform with Query Resolution System
 
 ## Implemented project structure
 
 ```text
-AI Powred Intelligent Query Resolution System/
+Development of AI-Based Knowledge Retrieval Platform with Query Resolution System/
 ├── app/
 │   ├── api/
 │   │   ├── auth.py

@@ -1,0 +1,9 @@
+#status {
+  font-size: 0.9rem;
+  color: #475569;
+  margin-top: 0.25rem;
+}
+
+#status:empty {
+  display: none;
+}

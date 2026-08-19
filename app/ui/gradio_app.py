@@ -54,9 +54,9 @@ def create_gradio_ui(
     def clear_chat_handler() -> None:
         qs.reset_thread()
 
-    with gr.Blocks(title="AI Query Resolution (temp Gradio)") as demo:
+    with gr.Blocks(title="Knowledge Query Platform (temp Gradio)") as demo:
         gr.Markdown(
-            "## AI-Powered Intelligent Query Resolution\n"
+            "## Development of AI-Based Knowledge Retrieval Platform with Query Resolution System\n"
             "_Temporary Gradio UI — will be replaced by React._"
         )
 

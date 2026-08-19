@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    app_name: str = "AI-Powered Intelligent Query Resolution System"
+    app_name: str = "Development of AI-Based Knowledge Retrieval Platform with Query Resolution System"
     debug: bool = False
 
     database_url: str = (
@@ -30,7 +30,11 @@ class Settings(BaseSettings):
     access_cookie_name: str = "access_token"
     refresh_cookie_name: str = "refresh_token"
 
-    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    cors_origins: list[str] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:8501",
+    ]
 
     # Chat LLM provider: "ollama" (local) or "openai" (GPT)
     llm_provider: LLMProvider = "ollama"
@@ -63,6 +67,21 @@ class Settings(BaseSettings):
     execution_logging_enabled: bool = False
     execution_log_max_chars: int = 1200
     execution_log_use_color: bool = True
+
+    # ElevenLabs speech (STT/TTS)
+    speech_enabled: bool = True
+    elevenlabs_api_key: str = ""
+    elevenlabs_base_url: str = "https://api.elevenlabs.io/v1"
+    elevenlabs_stt_realtime_model: str = "scribe_v2_realtime"
+    elevenlabs_stt_realtime_audio_format: str = "pcm_16000"
+    elevenlabs_stt_realtime_commit_strategy: str = "vad"
+    elevenlabs_stt_realtime_vad_silence_secs: float = 1.0
+    elevenlabs_tts_model: str = "eleven_flash_v2_5"
+    # Premade voice (free-tier API). Voice Library IDs fail on free plans.
+    elevenlabs_voice_id: str = "EXAVITQu4vr4xnSDxMaL"
+    elevenlabs_tts_output_format: str = "mp3_44100_128"
+    speech_max_tts_chars: int = 5000
+    speech_request_timeout_seconds: float = 120.0
 
     # Temporary Gradio UI
     gradio_enabled: bool = True

@@ -31,6 +31,10 @@ def _extract_tokens(response: httpx.Response) -> dict[str, str]:
         tokens["access_token"] = access
     if refresh:
         tokens["refresh_token"] = refresh
+    if tokens:
+        from state import store_auth_tokens
+
+        store_auth_tokens(tokens)
     return tokens
 
 
@@ -106,6 +110,15 @@ def reset_chat() -> dict[str, Any]:
     response = get_client().post("/query/reset")
     _raise_for_error(response)
     return response.json()
+
+
+def synthesize_speech(text: str, voice_id: str | None = None) -> bytes:
+    payload: dict[str, Any] = {"text": text}
+    if voice_id:
+        payload["voice_id"] = voice_id
+    response = get_client().post("/speech/synthesize", json=payload)
+    _raise_for_error(response)
+    return response.content
 
 
 def record_query(question: str, answer: str, confidence: float) -> dict[str, Any]:
