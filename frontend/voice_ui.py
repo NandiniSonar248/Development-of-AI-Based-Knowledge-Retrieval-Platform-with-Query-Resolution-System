@@ -23,89 +23,90 @@ def _inject_interaction_mode_styles() -> None:
         """
         <style>
         [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) {
-            background: linear-gradient(155deg, #eef5fc 0%, #f7faff 48%, #ffffff 100%);
+            background: transparent !important;
             border: none !important;
-            border-radius: 18px;
-            padding: 1rem 1.2rem 1.1rem;
-            margin: 0 0 1rem;
-            box-shadow:
-                inset 0 1px 0 rgba(255, 255, 255, 0.95),
-                0 10px 30px rgba(10, 61, 110, 0.08);
+            box-shadow: none !important;
+            padding: 0 0 0.85rem !important;
+            margin: 0 0 0.35rem !important;
         }
 
         [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor)::before {
             content: "Interaction mode";
             display: block;
             font-size: 0.78rem;
-            font-weight: 800;
-            letter-spacing: 0.08em;
+            font-weight: 700;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
             color: #1e6bb8;
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.45rem;
         }
 
         #interaction-mode-anchor {
             display: none;
         }
 
-        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) [data-testid="stSegmentedControl"] {
+        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) [data-testid="stButtonGroup"] {
             width: 100%;
         }
 
-        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) [data-baseweb="button-group"] {
+        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) .react-aria-ToggleButtonGroup {
             width: 100%;
-            background: rgba(10, 61, 110, 0.07) !important;
-            border: none !important;
-            border-radius: 14px;
-            padding: 5px;
-            gap: 6px;
-            box-shadow: inset 0 1px 2px rgba(10, 61, 110, 0.06);
+            display: flex !important;
+            gap: 0 !important;
+            background: rgba(255, 255, 255, 0.72) !important;
+            border: 1px solid rgba(10, 61, 110, 0.1) !important;
+            border-radius: 14px !important;
+            padding: 4px !important;
+            box-shadow: 0 8px 20px rgba(10, 61, 110, 0.05) !important;
         }
 
-        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) [data-baseweb="button-group"] > button {
-            flex: 1 1 0;
-            min-height: 2.65rem;
-            border: none !important;
-            border-radius: 11px !important;
+        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) button[data-variant="segmented_control"] {
+            flex: 1 1 0 !important;
+            min-height: 2.55rem !important;
+            margin: 0 !important;
+            border: 1px solid transparent !important;
+            border-radius: 10px !important;
             background: transparent !important;
-            color: #355a7a !important;
+            color: #475569 !important;
             font-size: 0.94rem !important;
             font-weight: 600 !important;
             letter-spacing: 0.01em;
             box-shadow: none !important;
             outline: none !important;
-            transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+            transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
         }
 
-        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) [data-baseweb="button-group"] > button:hover {
-            background: rgba(255, 255, 255, 0.72) !important;
+        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) button[data-variant="segmented_control"]:hover,
+        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) button[data-variant="segmented_control"][data-hovered="true"] {
+            background: rgba(255, 255, 255, 0.88) !important;
             color: #0a3d6e !important;
-            border: none !important;
+            border-color: rgba(10, 61, 110, 0.08) !important;
             box-shadow: none !important;
         }
 
-        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) [data-baseweb="button-group"] > button:active,
-        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) [data-baseweb="button-group"] > button:focus,
-        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) [data-baseweb="button-group"] > button:focus-visible {
-            border: none !important;
+        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) button[data-variant="segmented_control"]:focus,
+        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) button[data-variant="segmented_control"]:focus-visible,
+        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) button[data-variant="segmented_control"][data-focus-visible="true"] {
+            border-color: rgba(30, 107, 184, 0.35) !important;
             outline: none !important;
             box-shadow: none !important;
         }
 
-        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) [data-baseweb="button-group"] > button[aria-checked="true"],
-        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) [data-baseweb="button-group"] > button[aria-selected="true"] {
+        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) button[data-variant="segmented_control"][data-selected="true"],
+        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) button[data-variant="segmented_control"][kind="segmented_controlActive"] {
             background: linear-gradient(135deg, #1e6bb8 0%, #0a3d6e 100%) !important;
             color: #ffffff !important;
-            border: none !important;
+            border-color: transparent !important;
             outline: none !important;
-            box-shadow: 0 6px 16px rgba(10, 61, 110, 0.28) !important;
-            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(10, 61, 110, 0.22) !important;
         }
 
-        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) [data-baseweb="button-group"] > button[aria-checked="true"]:hover,
-        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) [data-baseweb="button-group"] > button[aria-selected="true"]:hover {
+        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) button[data-variant="segmented_control"][data-selected="true"]:hover,
+        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) button[data-variant="segmented_control"][data-selected="true"][data-hovered="true"],
+        [data-testid="stVerticalBlock"]:has(#interaction-mode-anchor) button[data-variant="segmented_control"][kind="segmented_controlActive"]:hover {
             background: linear-gradient(135deg, #1e6bb8 0%, #0a3d6e 100%) !important;
             color: #ffffff !important;
+            border-color: transparent !important;
         }
         </style>
         """,
