@@ -2,18 +2,24 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from langchain_ollama import ChatOllama
 
-from app.core.config import Settings, get_settings
+from app.core.config import Settings, get_settings, resolve_ollama_reasoning
 
 
 def create_ollama_chat_llm(settings: Settings | None = None) -> ChatOllama:
     """Build a ChatOllama client from application settings."""
     cfg = settings or get_settings()
-    return ChatOllama(
-        model=cfg.llm_model,
-        base_url=cfg.ollama_base_url,
-        temperature=cfg.llm_temperature,
-        seed=cfg.llm_seed,
-        num_ctx=cfg.llm_num_ctx,
-    )
+    kwargs: dict[str, Any] = {
+        "model": cfg.llm_model,
+        "base_url": cfg.ollama_base_url,
+        "temperature": cfg.llm_temperature,
+        "seed": cfg.llm_seed,
+        "num_ctx": cfg.llm_num_ctx,
+    }
+    reasoning = resolve_ollama_reasoning(cfg)
+    if reasoning is not None:
+        kwargs["reasoning"] = reasoning
+    return ChatOllama(**kwargs)

@@ -12,7 +12,7 @@ from docx import Document
 logger = logging.getLogger(__name__)
 
 SUPPORTED_EXTENSIONS = {".pdf", ".docx"}
-_CHUNK_SIZE = 1000
+_CHUNK_SIZE = 400
 _CHUNK_OVERLAP = 100
 _PDF_LIGATURES = str.maketrans(
     {

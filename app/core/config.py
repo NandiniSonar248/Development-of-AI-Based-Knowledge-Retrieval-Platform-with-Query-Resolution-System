@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 LLMProvider = Literal["ollama", "openai"]
+StructuredOutputMethod = Literal["auto", "json_schema", "function_calling", "json_mode"]
 
 
 class Settings(BaseSettings):
@@ -46,6 +47,11 @@ class Settings(BaseSettings):
     llm_seed: int = 42
     # Ollama allocates a KV cache sized to this window; lower it on low-RAM machines.
     llm_num_ctx: int = 4096
+    # Ollama think/reasoning: empty = auto (low for gpt-oss, unset otherwise).
+    # Values: low | medium | high | true | false
+    llm_reasoning: str | None = None
+    # rewrite_query structured output. auto uses function_calling for gpt-oss.
+    llm_structured_output_method: StructuredOutputMethod = "auto"
 
     # OpenAI GPT (used when llm_provider=openai)
     openai_api_key: str = ""
@@ -92,3 +98,29 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Return a cached Settings instance."""
     return Settings()
+
+
+def resolve_ollama_reasoning(settings: Settings | None = None) -> bool | str | None:
+    """Return ChatOllama ``reasoning`` for the current model."""
+    cfg = settings or get_settings()
+    raw = (cfg.llm_reasoning or "").strip()
+    if raw:
+        lowered = raw.lower()
+        if lowered in {"true", "1", "yes", "on"}:
+            return True
+        if lowered in {"false", "0", "no", "off"}:
+            return False
+        return lowered
+    if "gpt-oss" in cfg.llm_model.lower():
+        return "low"
+    return None
+
+
+def resolve_structured_output_method(settings: Settings | None = None) -> str:
+    """Return LangChain ``with_structured_output`` method."""
+    cfg = settings or get_settings()
+    if cfg.llm_structured_output_method != "auto":
+        return cfg.llm_structured_output_method
+    if cfg.llm_provider == "ollama" and "gpt-oss" in cfg.llm_model.lower():
+        return "function_calling"
+    return "json_schema"

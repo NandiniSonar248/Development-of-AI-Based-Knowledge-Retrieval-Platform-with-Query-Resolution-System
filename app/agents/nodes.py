@@ -15,10 +15,11 @@ from app.agents.prompts import (
     get_orchestrator_prompt,
     get_rewrite_query_prompt,
 )
+from app.agents.execution_logger import log_error
 from app.agents.schemas import QueryAnalysis
 from app.agents.state import AgentState, State
 from app.agents.token_utils import estimate_context_tokens
-from app.core.config import get_settings
+from app.core.config import get_settings, resolve_structured_output_method
 
 _settings = get_settings()
 if _settings.main_history_messages_to_keep < 2:
@@ -139,7 +140,32 @@ def _structured_output_llm(llm: Any, schema: type) -> Any:
         base = llm.model_copy(update={"disable_streaming": True})
     except Exception:
         base = llm
-    return base.with_structured_output(schema)
+    method = resolve_structured_output_method()
+    return base.with_structured_output(schema, method=method, include_raw=True)
+
+
+def _parse_query_analysis(raw: Any, fallback_query: str) -> QueryAnalysis:
+    """Return a QueryAnalysis, falling back to the original query if parse fails."""
+    parsed: Any = None
+    if isinstance(raw, QueryAnalysis):
+        parsed = raw
+    elif isinstance(raw, dict):
+        error = raw.get("parsing_error")
+        if error:
+            log_error("rewrite_query", error)
+        parsed = raw.get("parsed")
+        if parsed is None and "is_clear" in raw and "questions" in raw:
+            try:
+                parsed = QueryAnalysis.model_validate(raw)
+            except Exception:
+                parsed = None
+    if isinstance(parsed, QueryAnalysis):
+        return parsed
+    return QueryAnalysis(
+        is_clear=True,
+        questions=[fallback_query],
+        clarification_needed="",
+    )
 
 
 def rewrite_query(state: State, llm: Any) -> dict[str, Any]:
@@ -173,12 +199,17 @@ def rewrite_query(state: State, llm: Any) -> dict[str, Any]:
 
     context_section = "\n\n".join(context_parts)
     llm_with_structure = _structured_output_llm(llm, QueryAnalysis)
-    response = llm_with_structure.invoke(
-        [
-            SystemMessage(content=get_rewrite_query_prompt()),
-            HumanMessage(content=context_section),
-        ]
-    )
+    try:
+        raw_response = llm_with_structure.invoke(
+            [
+                SystemMessage(content=get_rewrite_query_prompt()),
+                HumanMessage(content=context_section),
+            ]
+        )
+    except Exception as exc:
+        log_error("rewrite_query", exc)
+        raw_response = None
+    response = _parse_query_analysis(raw_response, original_query)
     clarification_message_update = (
         [_name_internal_message(last_message, "clarification_response")] if pending_query else []
     )
