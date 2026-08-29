@@ -58,6 +58,7 @@ class RAGConfig:
     """Central configuration for embedding, storage, and retrieval."""
 
     embedding_model: str = "mxbai-embed-large"
+    # embedding_model: str = "nomic-embed-text"
     ollama_base_url: str = "http://localhost:11434"
     collection_name: str = "documents"
     persist_dir: Path = PROJECT_ROOT / "chromadb"
