@@ -9,7 +9,8 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.services.query_service import get_query_service
+import api_client
+from api_client import FrontendAPIError
 from chat_flow import process_user_prompt
 from state import ensure_session_state, get_access_token, sanitize_base_url
 from ui import apply_theme, render_page_header, render_response_details, render_sidebar, require_auth
@@ -42,11 +43,14 @@ render_page_header(
     "Ask questions about your uploaded documents and get grounded answers with citations and confidence scores.",
 )
 
-service = get_query_service()
 mode = render_mode_switch()
 
 if st.button("Reset chat"):
-    st.session_state.thread_id = service.reset_thread()
+    try:
+        reset_payload = api_client.reset_chat()
+        st.session_state.thread_id = reset_payload.get("thread_id")
+    except FrontendAPIError as exc:
+        st.error(f"Could not reset chat: {exc}")
     st.session_state.chat_messages = []
     st.session_state.pop("last_voice_transcript_id", None)
     st.session_state.pop("voice_partial", None)
@@ -87,7 +91,7 @@ for index, message in enumerate(st.session_state.chat_messages):
 if mode == "Text Chat":
     prompt = st.chat_input("Ask a question about your documents")
     if prompt:
-        process_user_prompt(prompt, service, auto_read_aloud=False)
+        process_user_prompt(prompt, auto_read_aloud=False)
 else:
     interim_box = st.empty()
     partial = str(st.session_state.get("voice_partial", "") or "").strip()
@@ -117,6 +121,5 @@ else:
             interim_box.empty()
             process_user_prompt(
                 result.transcript,
-                service,
                 auto_read_aloud=True,
             )

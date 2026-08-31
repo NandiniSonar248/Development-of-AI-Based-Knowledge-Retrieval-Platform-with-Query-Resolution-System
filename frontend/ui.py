@@ -734,6 +734,9 @@ def _confidence_label(score: float) -> str:
 
 
 def render_response_details(response: dict[str, object]) -> None:
+    if not response or "confidence" not in response:
+        return
+
     confidence = float(response["confidence"])
     clarification_needed = bool(response["clarification_needed"])
     citations = response["citations"]
