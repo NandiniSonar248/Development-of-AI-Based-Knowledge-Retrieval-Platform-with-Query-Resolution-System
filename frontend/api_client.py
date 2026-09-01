@@ -5,10 +5,27 @@ from typing import Any
 import httpx
 
 # from frontend.state import get_client
-from state import get_client
+from state import get_client, get_access_token
+
 
 class FrontendAPIError(Exception):
     """Raised when the backend returns an error response."""
+
+
+def _auth_headers() -> dict[str, str]:
+    """Attach JWT cookies when the httpx jar is empty (common on Streamlit Cloud)."""
+    import streamlit as st
+
+    cookies: list[str] = []
+    access = get_access_token()
+    refresh = str(st.session_state.get("refresh_token", "") or "").strip()
+    if access:
+        cookies.append(f"access_token={access}")
+    if refresh:
+        cookies.append(f"refresh_token={refresh}")
+    if not cookies:
+        return {}
+    return {"Cookie": "; ".join(cookies)}
 
 
 def _raise_for_error(response: httpx.Response) -> None:
@@ -101,13 +118,14 @@ def ask_question(question: str, thread_id: str | None) -> dict[str, Any]:
     response = get_client().post(
         "/query",
         json={"question": question, "thread_id": thread_id},
+        headers=_auth_headers(),
     )
     _raise_for_error(response)
     return response.json()
 
 
 def reset_chat() -> dict[str, Any]:
-    response = get_client().post("/query/reset")
+    response = get_client().post("/query/reset", headers=_auth_headers())
     _raise_for_error(response)
     return response.json()
 
@@ -116,7 +134,7 @@ def synthesize_speech(text: str, voice_id: str | None = None) -> bytes:
     payload: dict[str, Any] = {"text": text}
     if voice_id:
         payload["voice_id"] = voice_id
-    response = get_client().post("/speech/synthesize", json=payload)
+    response = get_client().post("/speech/synthesize", json=payload, headers=_auth_headers())
     _raise_for_error(response)
     return response.content
 
